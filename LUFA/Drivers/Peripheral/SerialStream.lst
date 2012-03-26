@@ -1,0 +1,98 @@
+   1               		.file	"SerialStream.c"
+   2               	__SREG__ = 0x3f
+   3               	__SP_H__ = 0x3e
+   4               	__SP_L__ = 0x3d
+   5               	__CCP__  = 0x34
+   6               	__tmp_reg__ = 0
+   7               	__zero_reg__ = 1
+  15               	.Ltext0:
+  16               		.section	.text.SerialStream_TxByte,"ax",@progbits
+  18               	SerialStream_TxByte:
+  19               	.LFB14:
+  20               	.LSM0:
+  21               	.LVL0:
+  22               	/* prologue: function */
+  23               	/* frame size = 0 */
+  24 0000 982F      		mov r25,r24
+  25               	.LVL1:
+  26               	.L2:
+  27               	.LBB8:
+  28               	.LBB9:
+  29               	.LSM1:
+  30 0002 8091 C800 		lds r24,200
+  31 0006 85FF      		sbrs r24,5
+  32 0008 00C0      		rjmp .L2
+  33               	.LSM2:
+  34 000a 9093 CE00 		sts 206,r25
+  35               	.LBE9:
+  36               	.LBE8:
+  37               	.LSM3:
+  38 000e 80E0      		ldi r24,lo8(0)
+  39 0010 90E0      		ldi r25,hi8(0)
+  40               	/* epilogue start */
+  41 0012 0895      		ret
+  42               	.LFE14:
+  44               		.section	.text.SerialStream_RxByte,"ax",@progbits
+  46               	SerialStream_RxByte:
+  47               	.LFB15:
+  48               	.LSM4:
+  49               	.LVL2:
+  50               	/* prologue: function */
+  51               	/* frame size = 0 */
+  52               	.LBB10:
+  53               	.LBB11:
+  54               	.LSM5:
+  55 0000 8091 C800 		lds r24,200
+  56               	.LVL3:
+  57               	.LBE11:
+  58               	.LBE10:
+  59               	.LSM6:
+  60 0004 87FD      		sbrc r24,7
+  61 0006 00C0      		rjmp .L9
+  62 0008 2EEF      		ldi r18,lo8(-2)
+  63 000a 3FEF      		ldi r19,hi8(-2)
+  64 000c 00C0      		rjmp .L7
+  65               	.L9:
+  66               	.LBB12:
+  67               	.LBB13:
+  68               	.LSM7:
+  69 000e 8091 C800 		lds r24,200
+  70 0012 87FF      		sbrs r24,7
+  71 0014 00C0      		rjmp .L9
+  72               	.LSM8:
+  73 0016 8091 CE00 		lds r24,206
+  74               	.LBE13:
+  75               	.LBE12:
+  76               	.LSM9:
+  77 001a 282F      		mov r18,r24
+  78 001c 30E0      		ldi r19,lo8(0)
+  79               	.L7:
+  80               	.LSM10:
+  81 001e C901      		movw r24,r18
+  82               	/* epilogue start */
+  83 0020 0895      		ret
+  84               	.LFE15:
+  86               	.global	USARTStream
+  87               		.data
+  90               	USARTStream:
+  91 0000 0000 00   		.skip 3,0
+  92 0003 03        		.byte	3
+  93 0004 0000 0000 		.skip 4,0
+  94 0008 0000      		.word	gs(SerialStream_TxByte)
+  95 000a 0000      		.word	gs(SerialStream_RxByte)
+  96 000c 0000      		.word	0
+ 129               	.Letext0:
+DEFINED SYMBOLS
+                            *ABS*:00000000 SerialStream.c
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:2      *ABS*:0000003f __SREG__
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:3      *ABS*:0000003e __SP_H__
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:4      *ABS*:0000003d __SP_L__
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:5      *ABS*:00000034 __CCP__
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:6      *ABS*:00000000 __tmp_reg__
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:7      *ABS*:00000001 __zero_reg__
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:18     .text.SerialStream_TxByte:00000000 SerialStream_TxByte
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:46     .text.SerialStream_RxByte:00000000 SerialStream_RxByte
+/var/folders/XE/XEg+uc0zHeyItrzl-KGfAE+++TI/-Tmp-//ccTWVFXT.s:90     .data:00000000 USARTStream
+
+UNDEFINED SYMBOLS
+__do_copy_data
