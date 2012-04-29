@@ -34,118 +34,174 @@
  *  the demo and is responsible for the initial application hardware configuration.
  */
 
+ 
+
 #include "Keyboard.h"
 
 #include <util/delay.h>
 
-
 #include <avr/wdt.h>
-  
 #include <avr/io.h>
 
-  
 #include <LUFA/Common/Common.h>
-  
 #include <LUFA/Drivers/USB/USB.h>
   
-
 #define FLASH_SIZE_BYTES 32768
-
 #ifndef BOOTLOADER_SEC_SIZE_BYTES
-
-#define BOOTLOADER_SEC_SIZE_BYTES (0x1000)
-
+#define BOOTLOADER_SEC_SIZE_BYTES                               (0x1000)
 #endif
 
-  
 uint32_t Boot_Key ATTR_NO_INIT;
 
-  
+//#define SNES
+
 #define MAGIC_BOOT_KEY            0xDC42ACCA
-  
 #define BOOTLOADER_START_ADDRESS  (FLASH_SIZE_BYTES - BOOTLOADER_SEC_SIZE_BYTES)
+
+#define R (1 << 0)
+#define L (1 << 1)
+#define X (1 << 2)
+#define A (1 << 3)
+#define EAST (1 << 4)
+#define WEST (1 << 5)
+#define SOUTH (1 << 6)
+#define NORTH (1 << 7)
+#define START (1 << 8)
+#define SELECT (1 << 9)
+#define Y (1 << 10)
+#define B (1 << 11)
+
+int held_A=0;
+int held_B=0;
+int held_X=0;
+int held_Y=0;
+int held_Up=0;
+int held_Down=0;
+int held_Left=0;
+int held_Right=0;
+int held_Start=0;
+int held_Select=0;
+int held_L=0;
+int held_R=0;
+
+int new_A=0;
+int new_B=0;
+int new_X=0;
+int new_Y=0;
+int new_Up=0;
+int new_Down=0;
+int new_Left=0;
+int new_Right=0;
+int new_Start=0;
+int new_Select=0;
+int new_L=0;
+int new_R=0;
+
+int rel_A=0;
+int rel_B=0;
+int rel_X=0;
+int rel_Y=0;
+int rel_Up=0;
+int rel_Down=0;
+int rel_Left=0;
+int rel_Right=0;
+int rel_Start=0;
+int rel_Select=0;
+int rel_L=0;
+int rel_R=0;
+
+unsigned short CompletePad, ExPad, TempPad;
+
+void UPDATEPAD(int pad, int var){
+	if(pad==1){
+		held_A = (var & A) >> 3;
+		held_B = (var & B) >> 11;
+		held_X = (var & X) >> 2;
+		held_Y = (var & Y) >> 10;
+		held_Up = (var & NORTH) >> 7;
+		held_Down = (var & SOUTH) >> 6;
+		held_Left = (var & WEST) >> 5;
+		held_Right = (var & EAST) >> 4;
+		held_Start = (var & START) >> 8;
+		held_Select = (var & SELECT) >> 9;
+		held_L = (var & L) >> 1;
+		held_R = (var & R);
+	}
+	if(pad==2){
+		new_A = (var & A) >> 3;
+		new_B = (var & B) >> 11;
+		new_X = (var & X) >> 2;
+		new_Y = (var & Y) >> 10;
+		new_Up = (var & NORTH) >> 7;
+		new_Down = (var & SOUTH) >> 6;
+		new_Left = (var & WEST) >> 5;
+		new_Right = (var & EAST) >> 4;
+		new_Start = (var & START) >> 8;
+		new_Select = (var & SELECT) >> 9;
+		new_L = (var & L) >> 1;
+		new_R = (var & R);
+	}
+	if(pad==3){
+		rel_A = (var & A) >> 3;
+		rel_B = (var & B) >> 11;
+		rel_X = (var & X) >> 2;
+		rel_Y = (var & Y) >> 10;
+		rel_Up = (var & NORTH) >> 7;
+		rel_Down = (var & SOUTH) >> 6;
+		rel_Left = (var & WEST) >> 5;
+		rel_Right = (var & EAST) >> 4;
+		rel_Start = (var & START) >> 8;
+		rel_Select = (var & SELECT) >> 9;
+		rel_L = (var & L) >> 1;
+		rel_R = (var & R);
+	}
+}
+
+void UpdatePad(int joypad_code) 
+{
+	ExPad = CompletePad;
+	CompletePad = joypad_code;
+	
+	UPDATEPAD(1, CompletePad); // held
+	UPDATEPAD(2, (ExPad & (~CompletePad))); // released
+	UPDATEPAD(3, (CompletePad & (~ExPad))); // newpress
+}
+
   
-  
-void Bootloader_Jump_Check(void) ATTR_INIT_SECTION(3);
-  
-void Bootloader_Jump_Check(void)
+  void Bootloader_Jump_Check(void) ATTR_INIT_SECTION(3);
+  void Bootloader_Jump_Check(void)
   {
-      
-// If the reset source was the bootloader and the key is correct, clear it and jump to the bootloader
-      
-if ((MCUSR & (1<<WDRF)) && (Boot_Key == MAGIC_BOOT_KEY))
+      // If the reset source was the bootloader and the key is correct, clear it and jump to the bootloader
+      if ((MCUSR & (1<<WDRF)) && (Boot_Key == MAGIC_BOOT_KEY))
       {
-          
-Boot_Key = 0;
-          
-((void (*)(void))BOOTLOADER_START_ADDRESS)(); 
-      
-}
-  
-}
+          Boot_Key = 0;
+          ((void (*)(void))BOOTLOADER_START_ADDRESS)(); 
+      }
+  }
 
-  
-void Jump_To_Bootloader(void)
+  void Jump_To_Bootloader(void)
   {
-      
-// If USB is used, detach from the bus
-      
-USB_ShutDown();
+      // If USB is used, detach from the bus
+      USB_ShutDown();
 
-      
-// Disable all interrupts
-      
-cli();
+      // Disable all interrupts
+      cli();
 
-      
-// Wait two seconds for the USB detachment to register on the host
-      
-for (uint8_t i = 0; i < 128; i++)
-        
-_delay_ms(16);
+      // Wait two seconds for the USB detachment to register on the host
+      for (uint8_t i = 0; i < 128; i++)
+        _delay_ms(16);
 
-      
-// Set the bootloader key to the magic value and force a reset
-      
-Boot_Key = MAGIC_BOOT_KEY;
-      
-wdt_enable(WDTO_250MS);
-      
-for (;;); 
-  
-}
-
+      // Set the bootloader key to the magic value and force a reset
+      Boot_Key = MAGIC_BOOT_KEY;
+      wdt_enable(WDTO_250MS);
+      for (;;); 
+  }
 
 #define CLK (1<<2)
-
 #define LATCH (1<<1)
-
 #define DATA (1<<0)
 
 
-#define R (1 << 0)
-
-#define L (1 << 1)
-
-#define X (1 << 2)
-
-#define A (1 << 3)
-
-#define EAST (1 << 4)
-
-#define WEST (1 << 5)
-
-#define SOUTH (1 << 6)
-
-#define NORTH (1 << 7)
-
-#define START (1 << 8)
-
-#define SELECT (1 << 9)
-
-#define Y (1 << 10)
-
-#define B (1 << 11)
 
 /** Buffer to hold the previously generated Keyboard HID report, for comparison purposes inside the HID class driver. */
 uint8_t PrevKeyboardHIDReportBuffer[sizeof(USB_KeyboardReport_Data_t)];
@@ -168,9 +224,10 @@ USB_ClassInfo_HID_Device_t Keyboard_HID_Interface =
 				.PrevReportINBufferSize       = sizeof(PrevKeyboardHIDReportBuffer),
 			},
     };
+uint16_t joypad_code = 0xFF;
+uint16_t joypad_code2 = 0xFF;
+uint16_t prev_joypad_code = 0xFF;
 
-uint16_t joypad_code = 0xFFFF;
-uint16_t prev_joypad_code = 0xFFFF;
 
 /** Main program entry point. This routine contains the overall program flow, including initial
  *  setup of all components and the main program loop.
@@ -184,43 +241,56 @@ int main(void)
 
 	for (;;)
 	{
+		joypad_code = 0xFF;
+		joypad_code2 = 0xFF;
+		PORTD |= LATCH;
+		_delay_us(22);
+		PORTD &= ~LATCH;
+#ifdef SNES
+		for (int i = 0; i < 16; i++) {
+#else
+		for (int i = 0; i < 8; i++) {
+#endif
+			joypad_code <<= 1;
+			PORTD |= CLK;
+			joypad_code |= (PIND & DATA) >> 0;
+			_delay_us(22);
+			PORTD &= ~CLK;
+			_delay_us(22);
+		}
 		
-	  joypad_code = 0xFFFF;
-		
-	  PORTD |= LATCH;
-		
-	  _delay_us(22);
-		
-	  PORTD &= ~LATCH;
-		
-	  //for (int i = 0; i < 8; i++) {
-	  for (int i = 0; i < 16; i++) {
-
-			
-	    joypad_code <<= 1;
-			
-	    PORTD |= CLK;
-			
-	    joypad_code |= (PIND & DATA) >> 0;
-			
-	    _delay_us(22);
-			
-	    PORTD &= ~CLK;
-			
-	    _delay_us(22);
-		
-	  }
-		
-	  //joypad_code <<= 4;
-		
-	  joypad_code >>= 4;
-	  if ((joypad_code & (SELECT | START)) == 0x00) {
-		    
-	    Jump_To_Bootloader();
-		
-	  }
-		
-	  _delay_us(22);
+#ifdef SNES
+		joypad_code2 >>= 4;
+#else
+		joypad_code2 <<= 4;
+#endif
+		PORTD |= LATCH;
+		_delay_us(22);
+		PORTD &= ~LATCH;
+#ifdef SNES
+		for (int i = 0; i < 16; i++) {
+#else
+		for (int i = 0; i < 8; i++) {
+#endif
+			joypad_code2 <<= 1;
+			PORTD |= CLK;
+			joypad_code2 |= (PIND & DATA) >> 0;
+			_delay_us(22);
+			PORTD &= ~CLK;
+			_delay_us(22);
+		}
+#ifdef SNES
+		joypad_code2 >>= 4;
+#else
+		joypad_code2 <<= 4;
+#endif		
+    
+    //joypad_code &= joypad_code2;
+    
+    if ((joypad_code & (SELECT | START)) == 0x00) {
+		    Jump_To_Bootloader();
+		}
+		_delay_us(22);
 
 		HID_Device_USBTask(&Keyboard_HID_Interface);
 		USB_USBTask();
@@ -283,7 +353,6 @@ void EVENT_USB_Device_StartOfFrame(void)
 {
 	HID_Device_MillisecondElapsed(&Keyboard_HID_Interface);
 }
-
 uint8_t prevButtonStatus = 0;
 
 /** HID class driver callback function for the creation of HID reports to the host.
@@ -300,119 +369,39 @@ bool CALLBACK_HID_Device_CreateHIDReport(USB_ClassInfo_HID_Device_t* const HIDIn
                                          const uint8_t ReportType, void* ReportData, uint16_t* const ReportSize)
 {
 	USB_KeyboardReport_Data_t* KeyboardReport = (USB_KeyboardReport_Data_t*)ReportData;
-
-	//uint8_t JoyStatus_LCL    = Joystick_GetStatus();
 	uint8_t ButtonStatus_LCL = Buttons_GetStatus();
 
 	uint8_t UsedKeyCodes = 0;
 
-//	if (JoyStatus_LCL & JOY_UP)
-//	  KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_A;
-//	else if (JoyStatus_LCL & JOY_DOWN)
-//	  KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_B;
-//
-//	if (JoyStatus_LCL & JOY_LEFT)
-//	  KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_C;
-//	else if (JoyStatus_LCL & JOY_RIGHT)
-//	  KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_D;
-//
-//	if (JoyStatus_LCL & JOY_PRESS)
-//	  KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_E;
+	UpdatePad(joypad_code);
 
-	//if (ButtonStatus_LCL & BUTTONS_BUTTON1)
-	//  KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_J;
-	//else if (prevButtonStatus & BUTTONS_BUTTON1)
-	//  KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_N;
-
-	if ((joypad_code & A) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_L;
+	if (new_Up) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_W;
+	if (rel_Up) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_E;
+	if (new_Down) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_X;
+	if (rel_Down) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_Z;
+	if (new_Left) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_A;
+	if (rel_Left) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_Q;
+	if (new_Right) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_D;
+	if (rel_Right) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_C;
+	if (new_Start) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_H;
+	if (rel_Start) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_R;
+	if (new_Select) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_L;
+	if (rel_Select) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_V;
+	if (new_A) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_I;
+	if (rel_A) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_M;
+	if (new_B) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_K;
+	if (rel_B) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_P;
+	if (new_X) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_U;
+	if (rel_X) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_F;
+	if (new_Y) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_J;
+	if (rel_Y) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_N;
+	if (new_R) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_O;
+	if (rel_R) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_G;
+	if (new_L) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_Y;
+	if (rel_L) KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_T;
 	
-  else if ((prev_joypad_code & A) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_V;
-
-	
-  if ((joypad_code & X) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_K;
-	
-  else if ((prev_joypad_code & X) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_P;
-
-	
-  if ((joypad_code & Y) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_J;
-	
-  else if ((prev_joypad_code & Y) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_N;
-
-	
-  if ((joypad_code & B) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_H;
-	
-  else if ((prev_joypad_code & B) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_R;
-
-	
-  if ((joypad_code & R) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_O;
-	
-  else if ((prev_joypad_code & R) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_G;
-	
-  if ((joypad_code & L) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_I;
-	
-  else if ((prev_joypad_code & L) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_M;
-
-	
-  if ((joypad_code & SELECT) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_U;
-	
-  else if ((prev_joypad_code & SELECT) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_F;
-
-	
-  if ((joypad_code & START) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_Y;
-	
-  else if ((prev_joypad_code & START) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_T;
-
-	
-  if ((joypad_code & SOUTH) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_X;
-	
-  else if ((prev_joypad_code & SOUTH) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_Z;
-
-	
-  if ((joypad_code & WEST) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_A;
-	
-  else if ((prev_joypad_code & WEST) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_Q;
-
-	
-  if ((joypad_code & EAST) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_D;
-	
-  else if ((prev_joypad_code & EAST) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_C;
-
-	
-  if ((joypad_code & NORTH) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_W;
-	
-  else if ((prev_joypad_code & NORTH) == 0x00)
-		KeyboardReport->KeyCode[UsedKeyCodes++] = HID_KEYBOARD_SC_E;
-	
-  //if (UsedKeyCodes)
-	//  KeyboardReport->Modifier = HID_KEYBOARD_MODIFER_LEFTSHIFT;
-
 	*ReportSize = sizeof(USB_KeyboardReport_Data_t);
-	
 	prevButtonStatus = ButtonStatus_LCL;
-	
 	prev_joypad_code = joypad_code;
 	return false;
 }
